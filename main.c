@@ -68,6 +68,8 @@ static char VERSION[] = "XX.YY.ZZ";
 #define LED_COUNT               (WIDTH * HEIGHT)
 
 int width = WIDTH;
+int width_BACK = 29;
+int width_HC = WIDTH - 29;
 int height = HEIGHT;
 int led_count = LED_COUNT;
 
@@ -200,7 +202,7 @@ void matrix_full(eColors myColor)
 {
     int i;
 
-    for (i = 0; i < (int)(width * height); i++)
+    for (i = width_HC; i < (int)(width * height); i++)
     {
 
         if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
@@ -242,15 +244,16 @@ void matrix_K2000(void)
 {
     int i;
     int diff = 0;
+    int width_HC = width - 29; // Head Perimeter LED Strip
 
     // RESET LOOP
-    for (i = 0; i < (int)(width * height); i++)
+    for (i = 0; i < (int)(width_HC * height); i++)
     {
 
         if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
-            matrix[i + (height - 1) * width] = 0;
+            matrix[i + (height - 1) * width_HC] = 0;
         } else {
-            matrix[i + (height - 1) * width] = 0;
+            matrix[i + (height - 1) * width_HC] = 0;
         }
     }
 
@@ -258,7 +261,7 @@ void matrix_K2000(void)
     for (i = 0; i < (int)(ARRAY_SIZE(dotspos_16)); i++)
     {
         dotspos_16[i]+=7;
-	diff = dotspos_16[i] - (width - 1);
+	diff = dotspos_16[i] - (width_HC - 1);
 
         if (diff >= 0)
         {
@@ -266,13 +269,13 @@ void matrix_K2000(void)
         }
 
         if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
-            matrix[dotspos_16[i] + (height - 1) * width] = dotcolors_rgbw[i];
+            matrix[dotspos_16[i] + (height - 1) * width_HC] = dotcolors_rgbw[i];
         } else {
-            matrix[dotspos_16[i] + (height - 1) * width] = dotcolors_K2000[i];
+            matrix[dotspos_16[i] + (height - 1) * width_HC] = dotcolors_K2000[i];
         }
 //        printf ("LED Position[%03d] = %d\n", i, dotspos_16[i]);
     }
-    matrix[dotspos_16[0]-1 + (height - 1) * width] = 0;
+    matrix[dotspos_16[0]-1 + (height - 1) * width_HC] = 0;
 
 //     printf (">> RENDER\n");
 }
@@ -495,7 +498,7 @@ int main(int argc, char *argv[])
     {
         matrix_raise();
         matrix_K2000();
-	//matrix_full(myColor);
+	matrix_full(myColor);
         matrix_render();
 
         if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
