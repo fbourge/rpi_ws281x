@@ -198,18 +198,48 @@ ws2811_led_t dotcolors_rgbw[] =
 };
 
 
+
+int color_switcher(void)
+{
+  static int a = 0;
+  static int color = 0x00FF0000;
+
+    if(a < 256)
+      color = (color - 0x00010000) + 0x00000100;
+
+    else if(a < 512)
+      color = (color - 0x00000100) + 0x00000001;
+
+    else if(a < 768)
+      color = (color - 0x00000001) + 0x00010000;
+
+    a++;
+
+    if (a < 0 || a > 768)
+      a = 0;
+
+
+    return color;
+}
+
 void matrix_full(eColors myColor)
 {
     int i;
 
     for (i = width_HC; i < (int)(width * height); i++)
     {
+        matrix[i + (height - 1) * width] = myColor;
+    }
+}
 
-        if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
-            matrix[i + (height - 1) * width] = 0;
-        } else {
-            matrix[i + (height - 1) * width] = dotcolors[myColor];
-        }
+
+void matrix_full2(void)
+{
+    int i;
+
+    for (i = width_HC; i < (int)(width * height); i++)
+    {
+        matrix[i + (height - 1) * width] = color_switcher();
     }
 }
 
@@ -498,7 +528,8 @@ int main(int argc, char *argv[])
     {
         matrix_raise();
         matrix_K2000();
-	matrix_full(myColor);
+	matrix_full2();
+	//matrix_full(myColor);
         matrix_render();
 
         if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
