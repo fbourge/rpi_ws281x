@@ -60,11 +60,11 @@ static char VERSION[] = "XX.YY.ZZ";
 #define GPIO_PIN                18
 #define DMA                     10
 //#define STRIP_TYPE            WS2811_STRIP_RGB		// WS2812/SK6812RGB integrated chip+leds
-#define STRIP_TYPE              WS2811_STRIP_GBR		// WS2812/SK6812RGB integrated chip+leds
+#define STRIP_TYPE              WS2812_STRIP     		// WS2812/SK6812RGB integrated chip+leds
 //#define STRIP_TYPE            SK6812_STRIP_RGBW		// SK6812RGBW (NOT SK6812RGB)
 
-#define WIDTH                   8
-#define HEIGHT                  8
+#define WIDTH                   142
+#define HEIGHT                  1
 #define LED_COUNT               (WIDTH * HEIGHT)
 
 int width = WIDTH;
@@ -72,6 +72,10 @@ int height = HEIGHT;
 int led_count = LED_COUNT;
 
 int clear_on_exit = 0;
+
+typedef enum colors_e {RED, ORANGE, YELLOW, GREEN, LIGHTBLUE, BLUE, PURPLE, PINK} eColors;
+
+eColors myColor;
 
 ws2811_t ledstring =
 {
@@ -142,7 +146,10 @@ void matrix_clear(void)
     }
 }
 
-int dotspos[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
+int dotspos_8[] = 	{ 0, 1, 2, 3, 4, 5, 6, 7 };
+int dotspos_16[] = 	{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15  };
+
+
 ws2811_led_t dotcolors[] =
 {
     0x00200000,  // red
@@ -152,7 +159,28 @@ ws2811_led_t dotcolors[] =
     0x00002020,  // lightblue
     0x00000020,  // blue
     0x00100010,  // purple
-    0x00200010,  // pink
+    0x00500030,  // pink
+    0x00FFFFFF,  // white
+};
+
+ws2811_led_t dotcolors_K2000[] =
+{
+    0x00000000,  // red
+    0x00080000,  // orange
+    0x00100000,  // yellow
+    0x00200000,  // green
+    0x00400000,  // lightblue
+    0x00600000,  // blue
+    0x00F80000,  // purple
+    0x00FF0000,  // pink
+    0x00FF0000,  // red
+    0x00F80000,  // orange
+    0x00600000,  // yellow
+    0x00400000,  // green
+    0x00200000,  // lightblue
+    0x00100000,  // blue
+    0x00080000,  // purple
+    0x00000000,  // pink
 };
 
 ws2811_led_t dotcolors_rgbw[] =
@@ -165,27 +193,88 @@ ws2811_led_t dotcolors_rgbw[] =
     0x10000020,  // blue + W
     0x00101010,  // white
     0x10101010,  // white + W
-
 };
 
-void matrix_bottom(void)
+
+void matrix_full(eColors myColor)
 {
     int i;
 
-    for (i = 0; i < (int)(ARRAY_SIZE(dotspos)); i++)
+    for (i = 0; i < (int)(width * height); i++)
     {
-        dotspos[i]++;
-        if (dotspos[i] > (width - 1))
+
+        if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
+            matrix[i + (height - 1) * width] = 0;
+        } else {
+            matrix[i + (height - 1) * width] = dotcolors[myColor];
+        }
+    }
+}
+
+void matrix_testbottom(void)
+{
+    int i;
+
+//     printf ("HEIGHT = %d, WIDTH = %d\n", height, width);
+    for (i = 0; i < (int)(ARRAY_SIZE(dotspos_8)); i++)
+    {
+        dotspos_8[i]++;
+
+        if (dotspos_8[i] > (width - 1))
         {
-            dotspos[i] = 0;
+            dotspos_8[i] = 0;
         }
 
         if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
-            matrix[dotspos[i] + (height - 1) * width] = dotcolors_rgbw[i];
+            matrix[dotspos_8[i] + (height - 1) * width] = dotcolors_rgbw[i];
         } else {
-            matrix[dotspos[i] + (height - 1) * width] = dotcolors[i];
+            matrix[dotspos_8[i] + (height - 1) * width] = dotcolors[i];
+        }
+//        printf ("LED Position[%03d] = %d\n", i, dotspos_16[i]);
+    }
+    matrix[dotspos_8[0]-1 + (height - 1) * width] = 0;
+
+//     printf (">> RENDER\n");
+}
+
+// MODE K2000
+void matrix_K2000(void)
+{
+    int i;
+    int diff = 0;
+
+    // RESET LOOP
+    for (i = 0; i < (int)(width * height); i++)
+    {
+
+        if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
+            matrix[i + (height - 1) * width] = 0;
+        } else {
+            matrix[i + (height - 1) * width] = 0;
         }
     }
+
+    // SET LOOP
+    for (i = 0; i < (int)(ARRAY_SIZE(dotspos_16)); i++)
+    {
+        dotspos_16[i]+=7;
+	diff = dotspos_16[i] - (width - 1);
+
+        if (diff >= 0)
+        {
+            dotspos_16[i] = diff;
+        }
+
+        if (ledstring.channel[0].strip_type == SK6812_STRIP_RGBW) {
+            matrix[dotspos_16[i] + (height - 1) * width] = dotcolors_rgbw[i];
+        } else {
+            matrix[dotspos_16[i] + (height - 1) * width] = dotcolors_K2000[i];
+        }
+//        printf ("LED Position[%03d] = %d\n", i, dotspos_16[i]);
+    }
+    matrix[dotspos_16[0]-1 + (height - 1) * width] = 0;
+
+//     printf (">> RENDER\n");
 }
 
 static void ctrl_c_handler(int signum)
@@ -218,6 +307,7 @@ void parseargs(int argc, char **argv, ws2811_t *ws2811)
 		{"gpio", required_argument, 0, 'g'},
 		{"invert", no_argument, 0, 'i'},
 		{"clear", no_argument, 0, 'c'},
+		{"olor", required_argument, 0, 'o'},
 		{"strip", required_argument, 0, 's'},
 		{"height", required_argument, 0, 'y'},
 		{"width", required_argument, 0, 'x'},
@@ -229,7 +319,7 @@ void parseargs(int argc, char **argv, ws2811_t *ws2811)
 	{
 
 		index = 0;
-		c = getopt_long(argc, argv, "cd:g:his:vx:y:", longopts, &index);
+		c = getopt_long(argc, argv, "cd:g:his:vx:y:o:", longopts, &index);
 
 		if (c == -1)
 			break;
@@ -245,6 +335,7 @@ void parseargs(int argc, char **argv, ws2811_t *ws2811)
 			fprintf(stderr, "Usage: %s \n"
 				"-h (--help)    - this information\n"
 				"-s (--strip)   - strip type - rgb, grb, gbr, rgbw\n"
+				"-o (--color)   - fill out with one color"
 				"-x (--width)   - matrix width (default 8)\n"
 				"-y (--height)  - matrix height (default 8)\n"
 				"-d (--dma)     - dma channel to use (default 5)\n"
@@ -287,6 +378,13 @@ void parseargs(int argc, char **argv, ws2811_t *ws2811)
 		case 'c':
 			clear_on_exit=1;
 			break;
+
+		case 'o':
+			if (optarg) {
+				int color = atoi(optarg);
+			        printf("C = %d\n", color);
+				myColor = color;
+			}
 
 		case 'd':
 			if (optarg) {
@@ -376,11 +474,14 @@ int main(int argc, char *argv[])
 {
     ws2811_return_t ret;
 
+
     sprintf(VERSION, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
     parseargs(argc, argv, &ledstring);
 
     matrix = malloc(sizeof(ws2811_led_t) * width * height);
+
+    printf("\n Matrix Addr = 0x%08x\n", (unsigned int)matrix);
 
     setup_handlers();
 
@@ -393,7 +494,8 @@ int main(int argc, char *argv[])
     while (running)
     {
         matrix_raise();
-        matrix_bottom();
+        matrix_K2000();
+	//matrix_full(myColor);
         matrix_render();
 
         if ((ret = ws2811_render(&ledstring)) != WS2811_SUCCESS)
@@ -403,7 +505,7 @@ int main(int argc, char *argv[])
         }
 
         // 15 frames /sec
-        usleep(1000000 / 15);
+        usleep(1000000 / 25);
     }
 
     if (clear_on_exit) {
